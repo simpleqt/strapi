@@ -20,6 +20,8 @@ import {
   deleteFolderOutputSchema,
   moveMediaInputSchema,
   moveMediaOutputSchema,
+  deleteMediaInputSchema,
+  deleteMediaOutputSchema,
 } from './schemas';
 import {
   createListMediaHandler,
@@ -31,6 +33,7 @@ import {
   createMoveFolderHandler,
   createDeleteFolderHandler,
   createMoveMediaHandler,
+  createDeleteMediaHandler,
 } from './handlers';
 
 /**
@@ -57,9 +60,12 @@ import {
  * move changes location — so an agent selects by intent instead of assembling a combined patch.
  *
  * `move_media` and `move_folder` stay separate even though `/actions/bulk-move` accepts both id
- * lists at once. Asset ids and folder ids are indistinguishable integers from separate
- * namespaces, and both `list_media` and `list_folders` return a plain `id` — a combined tool
- * would let an agent pass folder ids where assets were meant with nothing to object.
+ * lists at once, and `delete_media` and `delete_folder` stay separate for the same reason even
+ * though `/actions/bulk-delete` accepts `fileIds` and `folderIds` together. Asset ids and folder
+ * ids are indistinguishable integers from separate namespaces, and both `list_media` and
+ * `list_folders` return a plain `id` — a combined tool would let an agent pass folder ids where
+ * assets were meant with nothing to object. On the delete side that mistake is unrecoverable, and
+ * two tools also let each description carry the warning matched to its own blast radius.
  */
 export const buildUploadMcpToolDefinitions = (): UploadMcpTool[] => [
   {
@@ -115,6 +121,17 @@ export const buildUploadMcpToolDefinitions = (): UploadMcpTool[] => [
     resolveInputSchema: () => moveMediaInputSchema,
     resolveOutputSchema: () => moveMediaOutputSchema,
     createHandler: createMoveMediaHandler,
+  },
+  {
+    name: 'delete_media',
+    title: 'Media: delete assets (destructive)',
+    description:
+      'DESTRUCTIVE AND IRREVERSIBLE. Permanently deletes Media Library assets by numeric id, in bulk — from the database AND from the storage provider, along with every generated thumbnail and size variant. There is no undo, no trash and no recycle bin. The deleted files stop being served immediately, so any live entry, page or export still referencing one will break.\n\nWHETHER AN ASSET IS USED IN PUBLISHED CONTENT CANNOT BE CHECKED: Strapi does not expose "used in" information over this API, so this tool cannot tell you whether an asset is referenced by any entry, and a successful delete is NOT evidence that nothing was using it. Confirm with the user before deleting.\n\nCall it first WITHOUT `dryRun` (or with `dryRun: true`) to preview: nothing is deleted and the response lists exactly which assets WOULD be removed, and how many. Report those to the user, and only then call it again with `dryRun: false` to actually delete.\n\nTakes `ids`, an array of numeric ASSET ids — use an array of one to delete a single asset. ASSET ids only: asset ids and folder ids are indistinguishable integers from separate namespaces, so an id that does not resolve to an asset is reported as failed and never deletes anything — use delete_folder for folders (which also deletes everything inside them). Media files are not documents: use numeric ids, not documentIds.\n\nPARTIAL SUCCESS IS POSSIBLE: a bad id among good ones does NOT roll the completed deletions back, and those cannot be undone. The response always reports `deleted` (the assets removed, described in full because they can no longer be read back) and `failed` (each remaining id with a reason), which together account for every id you passed — so retry only the ids in `failed`. This holds on the dry run too, which reports the same split before anything is destroyed.',
+    telemetry: { source: 'upload', name: 'delete' },
+    auth: { policies: [{ action: ACTIONS.update }] },
+    resolveInputSchema: () => deleteMediaInputSchema,
+    resolveOutputSchema: () => deleteMediaOutputSchema,
+    createHandler: createDeleteMediaHandler,
   },
   {
     name: 'create_folder',

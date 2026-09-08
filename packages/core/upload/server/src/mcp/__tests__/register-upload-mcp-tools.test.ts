@@ -20,7 +20,7 @@ const READ_TOOLS = ['list_media', 'get_media', 'list_folders'];
 
 const FOLDER_WRITE_TOOLS = ['create_folder', 'rename_folder', 'move_folder', 'delete_folder'];
 
-const WRITE_TOOLS = ['update_media', 'move_media', ...FOLDER_WRITE_TOOLS];
+const WRITE_TOOLS = ['update_media', 'move_media', 'delete_media', ...FOLDER_WRITE_TOOLS];
 
 describe('upload MCP tool registration', () => {
   describe('gating', () => {
@@ -29,7 +29,7 @@ describe('upload MCP tool registration', () => {
 
       registerUploadMcpTools({ strapi });
 
-      expect(registerTool).toHaveBeenCalledTimes(9);
+      expect(registerTool).toHaveBeenCalledTimes(10);
       expect(registerTool.mock.calls.map(([tool]) => tool.name)).toEqual([
         ...READ_TOOLS,
         ...WRITE_TOOLS,
@@ -68,6 +68,7 @@ describe('upload MCP tool registration', () => {
       // A read-only token must never reach a write tool, so the write action is the gate.
       expect(byName.update_media.auth.policies).toEqual([{ action: ACTIONS.update }]);
       expect(byName.move_media.auth.policies).toEqual([{ action: ACTIONS.update }]);
+      expect(byName.delete_media.auth.policies).toEqual([{ action: ACTIONS.update }]);
     });
 
     test('does not pin a policy to a subject the action was never registered with', () => {
@@ -298,6 +299,78 @@ describe('upload MCP tool registration', () => {
         'id',
         'name',
       ]);
+    });
+
+    test('registers delete_media with the short-verb telemetry name', () => {
+      expect(byName.delete_media.telemetry.name).toBe('delete');
+    });
+
+    test('registers one bulk-capable delete_media rather than a separate single-asset tool', () => {
+      // Single-vs-bulk is an array length, and the admin REST API agrees: `/actions/bulk-delete`
+      // is the only delete route.
+      expect(byName.bulk_delete_media).toBeUndefined();
+      expect(byName.delete_media.description).toMatch(/bulk/i);
+      expect(byName.delete_media.description).toMatch(/array of one/i);
+    });
+
+    test('names the destructive, irreversible behaviour in delete_media', () => {
+      // An agent reads the description as its only warning before a call with no undo.
+      const { description } = byName.delete_media;
+
+      expect(description).toMatch(/destructive/i);
+      expect(description).toMatch(/irreversible/i);
+      expect(description).toMatch(/permanently/i);
+      expect(description).toMatch(/no undo/i);
+      // The provider file goes too, not just the row.
+      expect(description).toMatch(/storage provider/i);
+    });
+
+    test('warns in delete_media that usage information is unavailable', () => {
+      // "Used in" detection is not in the Media Library MVP, so the tool cannot say whether an
+      // asset is referenced by a live entry — and must not imply the delete is safe.
+      const { description } = byName.delete_media;
+
+      expect(description).toMatch(/used in/i);
+      expect(description).toMatch(/cannot (tell|be checked)/i);
+    });
+
+    test('steers delete_media to the dry run first, and to delete_folder for folders', () => {
+      const { description } = byName.delete_media;
+
+      expect(description).toMatch(/dryRun/);
+      expect(description).toMatch(/delete_folder/);
+      expect(description).toMatch(/ASSET ids only/);
+      expect(description).toMatch(/not documents/i);
+    });
+
+    test('defaults delete_media to a preview, so deleting needs an explicit opt-in', () => {
+      // `dryRun` is optional and the handler defaults it to true: omitting the flag must be the
+      // safe branch, never the destructive one.
+      const schema = byName.delete_media.resolveInputSchema?.(
+        {} as Parameters<NonNullable<typeof byName.delete_media.resolveInputSchema>>[0]
+      );
+
+      const parsed = schema?.safeParse({ ids: [1] });
+      expect(parsed?.success).toBe(true);
+      expect((parsed as { data: Record<string, unknown> })?.data.dryRun).toBeUndefined();
+    });
+
+    test('warns in delete_media that a partial failure is not rolled back', () => {
+      const { description } = byName.delete_media;
+
+      expect(description).toMatch(/partial success/i);
+      expect(description).toMatch(/does NOT roll/i);
+      expect(description).toMatch(/`failed`/);
+      expect(description).toMatch(/always reports/i);
+    });
+
+    test('publishes delete_media as a plain object schema the registry can expose', () => {
+      const schema = byName.delete_media.resolveInputSchema?.(
+        {} as Parameters<NonNullable<typeof byName.delete_media.resolveInputSchema>>[0]
+      );
+
+      expect(schema?.shape).toBeDefined();
+      expect(Object.keys(schema?.shape ?? {}).sort()).toEqual(['dryRun', 'ids']);
     });
   });
 });
