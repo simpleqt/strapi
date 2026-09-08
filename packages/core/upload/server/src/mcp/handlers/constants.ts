@@ -31,7 +31,7 @@ export const MCP_MOVE_MEDIA_DESTINATION_NOT_FOUND =
 
 /** Per-id `failed` reasons for `move_media`. Both are per asset, so the wording names the id's fate, not the call's. */
 export const MCP_MOVE_MEDIA_ID_NOT_FOUND =
-  'No media asset has this id. Asset ids and folder ids are indistinguishable integers: if this is a folder id, use move_folder. Otherwise the asset may already be deleted — use list_media to discover valid asset ids.';
+  'No media asset has this id, so nothing was moved for it. If this is a folder id, use move_folder — and note that a folder id only fails like this when no asset happens to share the number; when one does, move_media moves that asset instead. Otherwise the asset may already be deleted — use list_media to discover valid asset ids.';
 
 export const MCP_MOVE_MEDIA_ID_FORBIDDEN =
   'This token is not allowed to edit this asset. A permission condition on plugin::upload.assets.update excludes it.';
