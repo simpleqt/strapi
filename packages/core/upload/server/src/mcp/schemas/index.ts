@@ -1,6 +1,7 @@
 export {
   mediaIdSchema,
   folderIdSchema,
+  folderNameSchema,
   pageSchema,
   pageSizeSchema,
   sortSchema,
@@ -8,6 +9,10 @@ export {
   getMediaInputSchema,
   listFoldersInputSchema,
   updateMediaInputSchema,
+  createFolderInputSchema,
+  renameFolderInputSchema,
+  moveFolderInputSchema,
+  deleteFolderInputSchema,
 } from './input-schemas';
 export {
   mediaAssetOutputSchema,
@@ -16,5 +21,10 @@ export {
   mediaFolderNodeSchema,
   listFoldersOutputSchema,
   updateMediaOutputSchema,
+  mediaFolderOutputSchema,
+  createFolderOutputSchema,
+  renameFolderOutputSchema,
+  moveFolderOutputSchema,
+  deleteFolderOutputSchema,
   type MediaFolderNode,
 } from './output-schemas';
