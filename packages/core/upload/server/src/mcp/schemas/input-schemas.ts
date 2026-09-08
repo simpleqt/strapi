@@ -305,9 +305,16 @@ export const moveMediaInputSchema = z
  * the path of least resistance. A schema-level `.default(true)` would publish as a JSON Schema
  * default a client could serialise away.
  *
- * ASSET ids only. Asset ids and folder ids are indistinguishable integers from separate
- * namespaces, so nothing in the schema can tell them apart — the handler refuses to delete an id
- * that does not resolve to an asset, and `delete_folder` is the tool for folders.
+ * ASSET ids only, and the schema CANNOT enforce it. Asset ids and folder ids are independently
+ * numbered, so the same integer routinely names both; the handler resolves ids in the file table,
+ * which means a folder id whose number collides with an asset deletes that asset. Only an id
+ * matching no asset at all is reported as failed.
+ *
+ * This is an accepted risk, not an oversight: with a bare `ids: number[]` there is no way for the
+ * caller to say which namespace it meant, and refusing every colliding id would make those assets
+ * permanently undeletable over MCP. The mitigations are the dry run and the tool description. The
+ * durable fix is namespaced handles (`asset:1` / `folder:1`) across the whole media surface, which
+ * is a breaking change to the read tools and belongs to its own ticket.
  */
 export const deleteMediaInputSchema = z
   .object(
@@ -317,7 +324,7 @@ export const deleteMediaInputSchema = z
         .min(1)
         .max(100)
         .describe(
-          'Numeric ids of the assets to delete (1-100). ASSET ids only — folder ids are a separate namespace of integers and are never deleted by this tool; use delete_folder for folders.'
+          'Numeric ids of the assets to delete (1-100). ASSET ids only, taken from list_media or get_media — never from list_folders. Folder ids are numbered separately and the same number often names both an asset and a folder, so a folder id here deletes the asset sharing that number; use delete_folder for folders.'
         ),
       dryRun: z
         .boolean()

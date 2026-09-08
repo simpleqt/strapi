@@ -55,7 +55,7 @@ export const MCP_MOVE_MEDIA_ID_FAILED = (cause: string) =>
  * two are already gone — and no re-read can recover what was deleted.
  */
 export const MCP_DELETE_MEDIA_ID_NOT_FOUND =
-  'No media asset has this id. Asset ids and folder ids are indistinguishable integers: if this is a folder id, use delete_folder — delete_media never deletes a folder. Otherwise the asset may already be deleted; use list_media to discover valid asset ids.';
+  'No media asset has this id, so nothing was deleted for it. If this is a folder id, use delete_folder — and note that a folder id only fails like this when no asset happens to share the number; when one does, delete_media deletes that asset instead. Otherwise the asset may already be deleted; use list_media to discover valid asset ids.';
 
 export const MCP_DELETE_MEDIA_ID_FORBIDDEN =
   'This token is not allowed to delete this asset. A permission condition on plugin::upload.assets.update excludes it.';

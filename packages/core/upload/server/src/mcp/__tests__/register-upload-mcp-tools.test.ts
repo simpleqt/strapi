@@ -339,8 +339,21 @@ describe('upload MCP tool registration', () => {
 
       expect(description).toMatch(/dryRun/);
       expect(description).toMatch(/delete_folder/);
-      expect(description).toMatch(/ASSET ids only/);
+      expect(description).toMatch(/ASSET ids/);
       expect(description).toMatch(/not documents/i);
+    });
+
+    test('warns in delete_media that a folder id deletes the asset sharing its number', () => {
+      // The server cannot catch this — asset and folder ids are independently numbered and a
+      // bare `ids` array cannot say which namespace was meant — so the description IS the
+      // mitigation, alongside the dry run. It must not imply a folder id is harmless here.
+      const { description } = byName.delete_media;
+
+      expect(description).toMatch(/NEVER PASS A FOLDER ID/);
+      expect(description).toMatch(/same number often names both/i);
+      expect(description).toMatch(/list_media/);
+      // ...and it must not claim the tool refuses folder ids, which it cannot do.
+      expect(description).not.toMatch(/folder ids are rejected/i);
     });
 
     test('defaults delete_media to a preview, so deleting needs an explicit opt-in', () => {
