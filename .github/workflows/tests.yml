@@ -320,26 +320,12 @@ jobs:
   # login works there. Adding `firefox` to a matrix here is the way to find out;
   # it was left out of this PR so an unknown result would not block the review.
   #
-  # The two folder-move specs are skipped for now. They simulate a pointer drag
-  # through dnd-kit and the move never fires; they fail independently of this flag.
-  #
-  # The filter names their describe blocks (`Drag and Drop Deep` / `Shallow`) rather
-  # than just `Drag and Drop`: the looser pattern also caught
-  # `file-upload.spec.ts › should upload a file via drag and drop`, which works and
-  # has nothing to do with the folder-move problem.
-  #
-  # This is a bigger gap than a broken helper. Nothing else in the e2e suite tests
-  # a pointer drag: the one reordering test we have
-  # (content-manager/relations-ui-management.spec.ts) drives the keyboard
-  # affordance instead, and the Media Library deliberately ships no
-  # `KeyboardSensor` — `AssetsDndProvider` states that pointer drag is a mouse-only
-  # enhancement and `BulkMoveDialog` is the accessible path. So the Content
-  # Manager's workaround does not transfer here.
-  #
-  # Skipping these costs the gesture, not the feature: moving assets between
-  # folders is already covered through the bulk-move dialog in
-  # `bulk-move.spec.ts`, which passes. Drop the filter once someone finds a
-  # pointer-drag simulation that dnd-kit accepts.
+  # The folder-move drag-and-drop specs run here too. They were excluded at first on
+  # a wrong diagnosis of mine: I read `waitForMoveSuccess` at the top of the failure
+  # signatures and concluded the dnd-kit pointer simulation never fired the move.
+  # It fires. The helper was matching the legacy library's move toast
+  # (`modal.move.success-label`) while the beta reports through
+  # `list.bulk-actions.move.success`. One string, eleven specs.
   e2e_media_library_beta:
     if: needs.conditions.outputs.global == 'true' || needs.conditions.outputs.backend == 'true' || needs.conditions.outputs.frontend == 'true' || needs.conditions.outputs.e2e == 'true'
     timeout-minutes: 45
@@ -368,7 +354,7 @@ jobs:
           runEE: false
           betaMediaLibrary: true
           domains: media-library
-          jestOptions: '--project=chromium --grep-invert=Drag.and.Drop.(Deep|Shallow)'
+          jestOptions: '--project=chromium'
 
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: failure()
