@@ -20,7 +20,7 @@ const READ_TOOLS = ['list_media', 'get_media', 'list_folders'];
 
 const FOLDER_WRITE_TOOLS = ['create_folder', 'rename_folder', 'move_folder', 'delete_folder'];
 
-const WRITE_TOOLS = ['update_media', ...FOLDER_WRITE_TOOLS];
+const WRITE_TOOLS = ['update_media', 'move_media', ...FOLDER_WRITE_TOOLS];
 
 describe('upload MCP tool registration', () => {
   describe('gating', () => {
@@ -29,7 +29,7 @@ describe('upload MCP tool registration', () => {
 
       registerUploadMcpTools({ strapi });
 
-      expect(registerTool).toHaveBeenCalledTimes(8);
+      expect(registerTool).toHaveBeenCalledTimes(9);
       expect(registerTool.mock.calls.map(([tool]) => tool.name)).toEqual([
         ...READ_TOOLS,
         ...WRITE_TOOLS,
@@ -64,9 +64,10 @@ describe('upload MCP tool registration', () => {
       }
     });
 
-    test('gates update_media on plugin::upload.assets.update, not on read', () => {
+    test('gates the asset writes on plugin::upload.assets.update, not on read', () => {
       // A read-only token must never reach a write tool, so the write action is the gate.
       expect(byName.update_media.auth.policies).toEqual([{ action: ACTIONS.update }]);
+      expect(byName.move_media.auth.policies).toEqual([{ action: ACTIONS.update }]);
     });
 
     test('does not pin a policy to a subject the action was never registered with', () => {
@@ -218,6 +219,52 @@ describe('upload MCP tool registration', () => {
       for (const name of FOLDER_WRITE_TOOLS) {
         expect(byName[name].description).toMatch(/numeric id/i);
       }
+    });
+
+    test('registers move_media with the short-verb telemetry name', () => {
+      expect(byName.move_media.telemetry.name).toBe('move');
+    });
+
+    test('registers one bulk-capable move_media rather than a separate single-asset tool', () => {
+      // Single-vs-bulk is an array length, not a distinction an agent can get wrong, so a
+      // second tool would add a choice without removing a mistake.
+      expect(byName.bulk_move_media).toBeUndefined();
+      expect(byName.move_media.description).toMatch(/bulk/i);
+      expect(byName.move_media.description).toMatch(/array of one/i);
+    });
+
+    test('states in move_media that it takes asset ids and points folders at move_folder', () => {
+      // Asset ids and folder ids are indistinguishable integers, so the description is the only
+      // thing standing between an agent and a folder id passed as an asset.
+      const { description } = byName.move_media;
+
+      expect(description).toMatch(/ASSET ids only/);
+      expect(description).toMatch(/move_folder/);
+      expect(description).toMatch(/not documents/i);
+    });
+
+    test('warns in move_media that a partial failure is not rolled back', () => {
+      // An agent that reads a failed call as all-or-nothing would either retry moves that
+      // already happened or abandon ones that did not.
+      const { description } = byName.move_media;
+
+      expect(description).toMatch(/partial success/i);
+      expect(description).toMatch(/does NOT roll/i);
+      expect(description).toMatch(/`failed`/);
+    });
+
+    test('documents move_media root moves and the required destination', () => {
+      expect(byName.move_media.description).toMatch(/folder: null/);
+      expect(byName.move_media.description).toMatch(/media library root/i);
+    });
+
+    test('publishes move_media as a plain object schema the registry can expose', () => {
+      const schema = byName.move_media.resolveInputSchema?.(
+        {} as Parameters<NonNullable<typeof byName.move_media.resolveInputSchema>>[0]
+      );
+
+      expect(schema?.shape).toBeDefined();
+      expect(Object.keys(schema?.shape ?? {}).sort()).toEqual(['folder', 'ids']);
     });
 
     test('publishes update_media as a plain object schema the registry can expose', () => {

@@ -18,6 +18,8 @@ import {
   moveFolderOutputSchema,
   deleteFolderInputSchema,
   deleteFolderOutputSchema,
+  moveMediaInputSchema,
+  moveMediaOutputSchema,
 } from './schemas';
 import {
   createListMediaHandler,
@@ -28,6 +30,7 @@ import {
   createRenameFolderHandler,
   createMoveFolderHandler,
   createDeleteFolderHandler,
+  createMoveMediaHandler,
 } from './handlers';
 
 /**
@@ -52,6 +55,11 @@ import {
  *
  * Renaming and moving are separate tools for both objects — rename/update changes attributes,
  * move changes location — so an agent selects by intent instead of assembling a combined patch.
+ *
+ * `move_media` and `move_folder` stay separate even though `/actions/bulk-move` accepts both id
+ * lists at once. Asset ids and folder ids are indistinguishable integers from separate
+ * namespaces, and both `list_media` and `list_folders` return a plain `id` — a combined tool
+ * would let an agent pass folder ids where assets were meant with nothing to object.
  */
 export const buildUploadMcpToolDefinitions = (): UploadMcpTool[] => [
   {
@@ -96,6 +104,17 @@ export const buildUploadMcpToolDefinitions = (): UploadMcpTool[] => [
     resolveInputSchema: () => updateMediaInputSchema,
     resolveOutputSchema: () => updateMediaOutputSchema,
     createHandler: createUpdateMediaHandler,
+  },
+  {
+    name: 'move_media',
+    title: 'Media: move assets between folders',
+    description:
+      "Move Media Library assets into a different folder, in bulk. Takes `ids` — an array of numeric ASSET ids — and `folder`, the numeric id of the destination; pass `folder: null` to move them to the media library root. Both are required: use an array of one to move a single asset, and say null explicitly for the root.\n\nTakes ASSET ids only. Asset ids and folder ids are indistinguishable integers from separate namespaces, so an id that does not resolve to an asset is refused — use move_folder to move a folder (which carries its whole subtree). Media files are not documents: use numeric ids, not documentIds.\n\nMoving changes the folder only. Names, alt text, captions and the assets' public URLs are unaffected, so nothing referencing them breaks — use update_media to edit metadata.\n\nPARTIAL SUCCESS IS POSSIBLE: a bad id among good ones does NOT roll the valid moves back. The response reports `moved` (the assets that were moved) and `failed` (each remaining id with a reason), so retry only the ids in `failed`. A destination folder that does not exist rejects the whole call instead, before anything is moved.",
+    telemetry: { source: 'upload', name: 'move' },
+    auth: { policies: [{ action: ACTIONS.update }] },
+    resolveInputSchema: () => moveMediaInputSchema,
+    resolveOutputSchema: () => moveMediaOutputSchema,
+    createHandler: createMoveMediaHandler,
   },
   {
     name: 'create_folder',

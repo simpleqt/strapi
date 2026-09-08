@@ -3,7 +3,7 @@ export {
   createGetMediaHandler,
   createListFoldersHandler,
 } from './read-handlers';
-export { createUpdateMediaHandler } from './write-handlers';
+export { createUpdateMediaHandler, createMoveMediaHandler } from './write-handlers';
 export {
   createCreateFolderHandler,
   createRenameFolderHandler,
@@ -18,4 +18,8 @@ export {
   MCP_PARENT_FOLDER_NOT_FOUND,
   MCP_FOLDER_MOVE_INTO_SELF,
   MCP_DELETE_FOLDER_UNRESOLVED_IDS,
+  MCP_MOVE_MEDIA_DESTINATION_NOT_FOUND,
+  MCP_MOVE_MEDIA_ID_NOT_FOUND,
+  MCP_MOVE_MEDIA_ID_FORBIDDEN,
+  MCP_MOVE_MEDIA_NOTHING_MOVED,
 } from './constants';

@@ -135,3 +135,41 @@ export const deleteFolderOutputSchema = z.object({
     ),
   totalFileNumber: z.number().describe('Total files affected, across the whole cascade.'),
 });
+
+/**
+ * `move_media` output — a per-id report rather than a single verdict.
+ *
+ * A bad id among good ones does not roll back the valid moves (see the handler), so the response
+ * has to say which ids moved and which did not: an agent that only learned "the call failed"
+ * would either retry moves that already happened or abandon ones that did. `moved` and `failed`
+ * together account for every id in the request.
+ *
+ * `moved` carries the full asset in the same shape the read tools return, so the new folder can
+ * be confirmed without a follow-up `get_media`.
+ */
+export const moveMediaFailureSchema = z.object({
+  id: z.number().describe('The requested asset id that was not moved.'),
+  reason: z
+    .string()
+    .describe('Why this id was not moved — a missing asset, or one this token may not edit.'),
+});
+
+export const moveMediaOutputSchema = z.object({
+  destinationFolder: z
+    .object({
+      id: z.number(),
+      name: z.string().optional(),
+    })
+    .nullable()
+    .describe(
+      'The destination folder, or null when the assets were moved to the media library root.'
+    ),
+  moved: z
+    .array(mediaAssetOutputSchema)
+    .describe('The assets that were moved, in their new location.'),
+  failed: z
+    .array(moveMediaFailureSchema)
+    .describe(
+      'The ids that were not moved, each with a reason. The moves reported in `moved` still happened — retry only these.'
+    ),
+});

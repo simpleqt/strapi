@@ -25,3 +25,24 @@ export const MCP_FOLDER_MOVE_INTO_SELF =
  */
 export const MCP_DELETE_FOLDER_UNRESOLVED_IDS = (ids: number[]) =>
   `These ids do not match any media folder: ${ids.join(', ')}. Nothing was deleted — delete_folder rejects the whole request rather than deleting the folders that did match, because folder ids and asset ids are indistinguishable integers. If these are asset ids, use delete_media instead; otherwise the folders may already be gone. Use list_folders to discover valid folder ids.`;
+
+export const MCP_MOVE_MEDIA_DESTINATION_NOT_FOUND =
+  'The destination folder does not exist. Use list_folders to discover valid folder ids, or pass null for the media library root.';
+
+/** Per-id `failed` reasons for `move_media`. Both are per asset, so the wording names the id's fate, not the call's. */
+export const MCP_MOVE_MEDIA_ID_NOT_FOUND =
+  'No media asset has this id. Asset ids and folder ids are indistinguishable integers: if this is a folder id, use move_folder. Otherwise the asset may already be deleted — use list_media to discover valid asset ids.';
+
+export const MCP_MOVE_MEDIA_ID_FORBIDDEN =
+  'This token is not allowed to edit this asset. A permission condition on plugin::upload.assets.update excludes it.';
+
+/**
+ * Returned when `move_media` moved nothing at all.
+ *
+ * A response of `moved: []` with every id in `failed` is a failed call, not a partial success, so
+ * it is reported as a tool error rather than an OK result an agent might read as done. Partial
+ * success — at least one move applied — stays a successful response carrying the per-id report,
+ * because there is real work the agent must not retry.
+ */
+export const MCP_MOVE_MEDIA_NOTHING_MOVED = (ids: number[]) =>
+  `No assets were moved. None of these ids resolved to an asset this token can edit: ${ids.join(', ')}. Asset ids and folder ids are indistinguishable integers — use move_folder for folders, and list_media to discover valid asset ids.`;
