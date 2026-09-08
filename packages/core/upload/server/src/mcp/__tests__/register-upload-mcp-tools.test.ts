@@ -251,6 +251,9 @@ describe('upload MCP tool registration', () => {
       expect(description).toMatch(/partial success/i);
       expect(description).toMatch(/does NOT roll/i);
       expect(description).toMatch(/`failed`/);
+      // The report is unconditional, so an agent never has to parse prose to learn what moved.
+      expect(description).toMatch(/always reports/i);
+      expect(description).toMatch(/even when nothing moved/i);
     });
 
     test('documents move_media root moves and the required destination', () => {
